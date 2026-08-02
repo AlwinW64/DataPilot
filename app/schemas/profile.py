@@ -1,6 +1,8 @@
 
 from pydantic import BaseModel
 
+from typing import Any
+
 """
 class ProfileResponse(BaseModel):
     dataset_id: str
@@ -34,3 +36,9 @@ class ProfileResponse(BaseModel):
     quality: DatasetQuality
 
     types: DatasetTypes
+
+    total_bytes: int # total bytes
+
+    # These aren't modeled as their keys depend on the dataset
+    statistics: dict[str, dict[str, float]]
+    preview: list[dict[str, Any]]

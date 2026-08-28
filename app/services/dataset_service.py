@@ -8,6 +8,8 @@ from datetime import datetime, UTC
 from fastapi import UploadFile
 from fastapi import HTTPException
 
+from app.schemas.upload import UploadResponse
+
 UPLOAD_DIR = Path("uploads")
 
 
@@ -141,11 +143,16 @@ def extract_metadata(df: pd.DataFrame) -> dict:
 
 
 def build_response(dataset_id, filename, metadata):
-    return {
-        "dataset_id": dataset_id,
-        "filename": filename,
-        "metadata": metadata
-    }
+
+    rows = metadata["rows"]
+    cols = metadata["columns"]
+    col_names = metadata["column_names"]
+
+    return UploadResponse(
+        dataset_id=dataset_id,
+        filename=filename,
+        metadata=metadata
+    )
 
 
 def delete_dataset(dataset_id: str):

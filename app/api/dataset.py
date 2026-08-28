@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from app.services import profiling_service
 from app.schemas.profile import ProfileResponse
 

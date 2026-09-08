@@ -8,12 +8,15 @@ from datetime import datetime, UTC
 from fastapi import UploadFile
 from fastapi import HTTPException
 
-from app.schemas.upload import UploadResponse
+
+from app.database import SessionLocal
+from app.models.dataset import Dataset
+
 
 UPLOAD_DIR = Path("uploads")
 
 
-async def upload_dataset(file: UploadFile):
+async def upload_service(file: UploadFile):
 
     validate_file(file)
     dataset_id = generate_dataset_id()
@@ -21,6 +24,28 @@ async def upload_dataset(file: UploadFile):
     csv_path = build_upload_path(dataset_id)
 
     await save_file(file, dataset_id)
+
+
+    db = SessionLocal()
+
+    try:
+        dataset = Dataset(
+            id=dataset_id,
+            filename=file.filename,
+            file_path=str(csv_path),
+            uploaded_at=datetime.now(UTC)
+        )
+
+        db.add(dataset)
+        db.commit()
+
+    finally:
+        db.close()
+
+
+
+
+
 
     df = load_dataset(dataset_id)
 
@@ -81,9 +106,34 @@ async def save_file(file, dataset_id):
         json.dump(metadata, f, indent=4)
 
 
+def get_dataset(dataset_id: str):
+
+    db = SessionLocal()
+
+    try:
+        dataset = (
+            db.query(Dataset)
+            .filter(Dataset.id == dataset_id)
+            .first()
+        )
+
+        if not dataset:
+            raise HTTPException(
+                status_code=404,
+                detail = "Dataset not found"
+            )
+        return dataset
+    finally:
+        db.close()
+
+
 def load_dataset(dataset_id) -> pd.DataFrame:
 
-    csv_path = UPLOAD_DIR / dataset_id / "dataset.csv"
+    dataset = get_dataset(dataset_id)
+
+    #csv_path = UPLOAD_DIR / dataset_id / "dataset.csv"
+
+    csv_path = Path(dataset.file_path)
 
     if not csv_path.exists():
         raise HTTPException(
@@ -148,11 +198,13 @@ def build_response(dataset_id, filename, metadata):
     cols = metadata["columns"]
     col_names = metadata["column_names"]
 
-    return UploadResponse(
-        dataset_id=dataset_id,
-        filename=filename,
-        metadata=metadata
-    )
+    return {
+        "dataset_id": dataset_id,
+        "filename": filename,
+        "rows": rows,
+        "columns": cols,
+        "column_names": col_names,
+    }
 
 
 def delete_dataset(dataset_id: str):

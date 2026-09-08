@@ -4,7 +4,7 @@ from app.api.health import router as health_router
 from app.api.upload import router as upload_router
 from app.api.dataset import router as dataset_router
 from app.api.chart import router as chart_router
-from app.api.ml import router as context_router
+from app.api.chat import router as context_router
 
 app = FastAPI(
     title="DataPilot",

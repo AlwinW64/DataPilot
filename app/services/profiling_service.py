@@ -1,5 +1,4 @@
 from app.services import dataset_service
-from app.schemas.profile import ProfileResponse
 
 from typing import Any
 
@@ -14,16 +13,15 @@ def generate_profile(dataset_id):
     memory_usage = extract_memory_usage(df)
     preview = extract_preview(df)
 
-    return ProfileResponse(
-        dataset_id=dataset_id,
-        basic=basic_info,
-        quality=quality,
-        types=column_types,
-        total_bytes=memory_usage,
-
-        statistics=statistics,
-        preview=preview,
-    )
+    return {
+        "dataset_id": dataset_id,
+        "basic": basic_info,
+        "quality": quality,
+        "types": column_types,
+        "total_bytes": memory_usage,
+        "statistics": statistics,
+        "preview": preview,
+    }
 
 
 def extract_basic_info(df):

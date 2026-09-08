@@ -3,13 +3,6 @@ from pydantic import BaseModel
 
 from typing import Any
 
-"""
-class ProfileResponse(BaseModel):
-    dataset_id: str
-    rows: int
-    columns: int
-    column_names: list[str]
-"""
 
 class DatasetBasicInfo(BaseModel):
     rows: int

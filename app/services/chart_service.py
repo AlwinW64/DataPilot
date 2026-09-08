@@ -1,5 +1,4 @@
 
-from app.schemas.chart_request import ChartRequest
 from app.services import dataset_service
 
 import plotly.express as px
@@ -11,7 +10,7 @@ from pandas.api.types import is_numeric_dtype
 # ========= Public API =========
 
 
-def generate_chart(dataset_id: str, request: ChartRequest) -> str:
+def generate_chart(dataset_id: str, request) -> Figure:
 
     df = dataset_service.load_dataset(dataset_id)
 
@@ -19,7 +18,7 @@ def generate_chart(dataset_id: str, request: ChartRequest) -> str:
 
     figure = _dispatch_chart(df, request)
 
-    return figure.to_json()
+    return figure
 
 
 
@@ -39,7 +38,7 @@ SUPPORTED_CHART_TYPES = {
 }
 
 
-def _validate_chart_type(request: ChartRequest):
+def _validate_chart_type(request):
     if request.chart_type not in SUPPORTED_CHART_TYPES:
         raise ValueError(f"Unsupported chart type: {request.chart_type}")
 

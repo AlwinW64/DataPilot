@@ -1,22 +1,24 @@
 
 from fastapi import APIRouter
 
-from app.schemas.chart_request import ChartRequest
+import json
+from app.schemas.chart import ChartRequest, ChartResponse
 from app.services import chart_service
 
-router = APIRouter(
-    prefix="/datasets",
-    tags=["Charts"]
-)
+router = APIRouter()
 
 
-@router.post("/{dataset_id}/charts")
+@router.post("/datasets/{dataset_id}/charts", response_model=ChartResponse)
 def generate_chart(
     dataset_id: str,
     request: ChartRequest
 ):
 
-    return chart_service.generate_chart(
-        dataset_id,
-        request
+    figure = chart_service.generate_chart(
+        dataset_id, request)
+    
+    return ChartResponse(
+        figure=json.loads(figure.to_json()),
+        chart_type=request.chart_type,
+        title=request.title,
     )

@@ -1,14 +1,14 @@
 
 from fastapi import APIRouter, UploadFile
-from app.services import dataset_service
+from app.services.dataset_service import upload_service
+from app.schemas.upload import UploadResponse
 
-router = APIRouter (
-    prefix = "/upload",
-    tags = ["upload"]
-)
+router = APIRouter ()
 
-@router.post("/")
+@router.post("/datasets", response_model=UploadResponse)
 async def upload_dataset(file:UploadFile):
 
-    return await dataset_service.upload_dataset(file)
+    response = await upload_service(file)
+
+    return UploadResponse(**response)
 

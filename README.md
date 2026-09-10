@@ -130,6 +130,22 @@ FastAPI's interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+### 6. Start the React Frontend
+
+Open a terminal in the `frontend` directory:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The conversational analytics workspace will be available at:
+
+```text
+http://localhost:5173
+```
+
+
 ## 🔌 API Overview
 
 ### Health / root

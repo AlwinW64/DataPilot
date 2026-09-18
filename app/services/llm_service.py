@@ -67,7 +67,7 @@ def answer_question(
 
     response = _call_model(prompt)
 
-    return response
+    return response.text
 
 
 

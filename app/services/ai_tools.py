@@ -48,6 +48,6 @@ def execute_tool(
 
 print("ai_tools.py")
 
-print(execute_tool("aggregate_values", 
-                   {"group_column": "fuelType", "target_column": "price", "operation": "mean"},
-                     "7a18d9da-3807-4fd8-815e-b4b944e0a2a1"))
+#print(execute_tool("aggregate_values", 
+#                   {"group_column": "fuelType", "target_column": "price", "operation": "mean"},
+#                       "7a18d9da-3807-4fd8-815e-b4b944e0a2a1"))

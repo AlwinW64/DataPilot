@@ -7,7 +7,9 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 
-GEMINI_MODEL = "gemini-2.5-flash"
+TEST_KEY = os.getenv("TEST_KEY")
+
+GEMINI_MODEL = "gemini-3.5-flash"
 
 
 LLM_MODEL = GEMINI_MODEL

@@ -35,5 +35,6 @@ class Dataset(Base):
     conversations = relationship(
     "Conversation",
     secondary=conversation_datasets,
-    back_populates="datasets"
+    back_populates="datasets",
+    passive_deletes=True
     )

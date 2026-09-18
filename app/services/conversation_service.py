@@ -71,17 +71,21 @@ def add_message(
         db.close()
 
 
-def get_messages(conversation_id: str):
+def get_messages(conversation_id: str, limit: int = 10):
     db = SessionLocal()
 
     try:
         messages = (
             db.query(Message)
-            .filter(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at)
+            .filter(
+                Message.conversation_id == conversation_id
+            )
+            .order_by(Message.created_at.desc())
+            .limit(limit)
             .all()
         )
 
+        messages.reverse()
         return messages
 
     finally:

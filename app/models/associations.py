@@ -11,13 +11,15 @@ conversation_datasets = Table(
 
     Column(
         "conversation_id",
-        ForeignKey("conversations.id"),
+        ForeignKey("conversations.id",
+                   ondelete="CASCADE"),
         primary_key=True
     ),
 
     Column(
         "dataset_id",
-        ForeignKey("datasets.id"),
+        ForeignKey("datasets.id",
+                   ondelete="CASCADE"),
         primary_key=True
     )
 )

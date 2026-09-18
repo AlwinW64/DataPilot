@@ -1,14 +1,47 @@
 
-from app.services import dataset_service
-from app.services import profiling_service
+from app.services.conversation_service import get_messages, get_conversation_datasets
+from app.services.profiling_service import generate_profile
 
 
 
-def build_context(dataset_id: str) -> dict:
+def build_context(conversation_id: str):
 
-    profile = profiling_service.generate_profile(dataset_id)
+    messages = get_messages(conversation_id, limit=10)
+
+    datasets = get_conversation_datasets(
+        conversation_id
+    )
+
+    dataset_context = []
+
+    for dataset in datasets:
+
+        profile = generate_profile(
+            dataset.id
+        )
+
+        dataset_context.append(
+            {
+                "dataset_id": dataset.id,
+                "filename": dataset.filename,
+                "profile": profile
+            }
+        )
 
     return {
-        "dataset_id": dataset_id,
-        "profile": profile
+        "conversation_history": [
+            {
+                "role": message.role,
+                "content": message.content
+            }
+            for message in messages
+        ],
+
+        "datasets": dataset_context
     }
+
+#print("context_service")
+
+#context = build_context("886b93e0-4583-45fa-957c-149b673f3aa9")
+
+#print(context)

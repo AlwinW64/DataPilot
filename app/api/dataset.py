@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/datasets/{dataset_id}/profile",
+    "/dataset/{dataset_id}/profile",
     response_model=ProfileResponse
 )
 def get_profile(dataset_id: str):

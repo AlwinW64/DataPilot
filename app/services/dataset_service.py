@@ -1,9 +1,11 @@
 
+import os
+import json
+from pathlib import Path
+from datetime import datetime, UTC
+
 import pandas as pd
 import uuid
-from pathlib import Path
-import json
-from datetime import datetime, UTC
 
 from fastapi import UploadFile
 from fastapi import HTTPException
@@ -12,50 +14,24 @@ from fastapi import HTTPException
 from app.database import SessionLocal
 from app.models.dataset import Dataset
 
-
-UPLOAD_DIR = Path("uploads")
-
-
-async def upload_service(file: UploadFile):
-
-    validate_file(file)
-    dataset_id = generate_dataset_id()
-
-    csv_path = build_upload_path(dataset_id)
-
-    await save_file(file, dataset_id)
+from dotenv import load_dotenv
+load_dotenv()
 
 
-    db = SessionLocal()
-
-    try:
-        dataset = Dataset(
-            id=dataset_id,
-            filename=file.filename,
-            file_path=str(csv_path),
-            uploaded_at=datetime.now(UTC)
-        )
-
-        db.add(dataset)
-        db.commit()
-
-    finally:
-        db.close()
+from app.services import dataset_service_local
+from app.services import dataset_service_s3
 
 
 
+upload_service = dataset_service_s3.upload_service_s3
+delete_service = dataset_service_s3.delete_dataset_s3
+list_datasets = dataset_service_s3.list_datasets
+
+
+load_dataset = dataset_service_s3.load_dataset_s3
 
 
 
-    df = load_dataset(dataset_id)
-
-    metadata = extract_metadata(df)
-
-    return build_response(
-        dataset_id,
-        file.filename,
-        metadata
-    )
 
 
 def validate_file(file: UploadFile):
@@ -75,35 +51,6 @@ def validate_file(file: UploadFile):
 
 def generate_dataset_id() -> str:
     return str(uuid.uuid4())
-
-
-def build_upload_path(dataset_id):
-
-    dataset_dir = UPLOAD_DIR / dataset_id
-    dataset_dir.mkdir(parents=True, exist_ok=True)
-
-    csv_path = dataset_dir / "dataset.csv"
-
-    return csv_path
-
-
-async def save_file(file, dataset_id):
-
-    csv_path = UPLOAD_DIR / dataset_id / "dataset.csv"
-    contents = await file.read()
-
-    with open(csv_path, "wb") as f:
-        f.write(contents)
-
-    metadata = {
-    "dataset_id": dataset_id,
-    "filename": file.filename,
-    "path": str(csv_path),
-    "uploaded_at": datetime.now(UTC).isoformat(),
-    }
-
-    with open(csv_path.parent / "metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=4)
 
 
 def get_dataset(dataset_id: str):
@@ -127,55 +74,7 @@ def get_dataset(dataset_id: str):
         db.close()
 
 
-def load_dataset(dataset_id) -> pd.DataFrame:
 
-    dataset = get_dataset(dataset_id)
-
-    #csv_path = UPLOAD_DIR / dataset_id / "dataset.csv"
-
-    csv_path = Path(dataset.file_path)
-
-    if not csv_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Dataset not found."
-        )
-    
-    try:
-        return pd.read_csv(csv_path)
-
-    
-
-    except pd.errors.EmptyDataError:
-        raise HTTPException(
-            status_code=400,
-            detail="The uploaded CSV file is empty."
-        )
-
-    except pd.errors.ParserError:
-        raise HTTPException(
-            status_code=400,
-            detail="The uploaded CSV file is corrupted or has an invalid format."
-        )
-
-    except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=400,
-            detail="The CSV file contains invalid text encoding. Please upload a UTF-8 encoded file."
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail="An Unexpected error has occured while processing the dataset."
-        )
-
-
-def load_metadata(dataset_id):
-        metadata_path = UPLOAD_DIR / dataset_id / "metadata.json"
-
-        with open(metadata_path, "r", encoding="utf-8") as f:
-            return json.load(f)
     
 
 def extract_metadata(df: pd.DataFrame) -> dict:
@@ -191,7 +90,6 @@ def extract_metadata(df: pd.DataFrame) -> dict:
     }
 
 
-
 def build_response(dataset_id, filename, metadata):
 
     rows = metadata["rows"]
@@ -205,26 +103,4 @@ def build_response(dataset_id, filename, metadata):
         "columns": cols,
         "column_names": col_names,
     }
-
-
-def delete_dataset(dataset_id: str):
-    for file in UPLOAD_DIR.iterdir():
-        if file.name.startswith(dataset_id):
-            file.unlink()
-            return {
-                "message": "Dataset deleted successfully.",
-                "dataset_id": dataset_id
-            }
-
-    raise FileNotFoundError("Dataset not found.")
-
-
-def list_datasets():
-    datasets = []
-
-    for file in UPLOAD_DIR.iterdir():
-        if file.is_file():
-            datasets.append(file.name)
-
-    return datasets
 

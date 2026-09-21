@@ -26,8 +26,8 @@ def execute_tool(
 
         return calculate_correlation(
             dataset_id=dataset_id,
-            col1=arguments["column1"],
-            col2=arguments["column2"]
+            col1=arguments["col1"],
+            col2=arguments["col2"]
         )
 
 
@@ -46,7 +46,7 @@ def execute_tool(
             f"Unknown tool: {tool_name}"
         )
 
-print("ai_tools.py")
+#print("ai_tools.py")
 
 #print(execute_tool("aggregate_values", 
 #                   {"group_column": "fuelType", "target_column": "price", "operation": "mean"},

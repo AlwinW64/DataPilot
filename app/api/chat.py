@@ -54,6 +54,8 @@ def chat(request: ChatRequest):
 
     else:
 
+        dataset_id = request.dataset_ids[0]
+
         conversation = get_conversation(
             conversation_id
         )
@@ -82,8 +84,11 @@ def chat(request: ChatRequest):
     # Ask LLM
     answer = answer_question(
         context,
-        request.message
+        request.message,
+        dataset_id
     )
+
+    print("LLM response: ", repr(answer))
 
 
     # Store assistant response

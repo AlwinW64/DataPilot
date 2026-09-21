@@ -97,3 +97,12 @@ def aggregate_values(dataset_id: str,
     return OPERATIONS[operation]().to_dict()
 
 
+# analysis service local test "2a800111-a94b-4a1c-bfa9-3bccaec30b04"
+"""
+print(
+     aggregate_values(
+           "2a800111-a94b-4a1c-bfa9-3bccaec30b04",
+          "fuelType",
+          "price",
+          "mean"))
+"""

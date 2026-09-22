@@ -70,7 +70,7 @@ TOOLS = [
                 "col2"
             ]
         }
-    )
+    ),
 
     types.FunctionDeclaration(
         name="filter_rows",

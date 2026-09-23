@@ -4,7 +4,11 @@ from pydantic import BaseModel
 from typing import Any
 
 
-class DatasetBasicInfo(BaseModel):
+class DatasetInfo(BaseModel):
+    id: str
+    filename: str
+
+class DataInfo(BaseModel):
     rows: int
     columns: int
     column_names: list[str]
@@ -22,9 +26,9 @@ class DatasetTypes(BaseModel):
 
 class ProfileResponse(BaseModel):
 
-    dataset_id: str
+    dataset: DatasetInfo
 
-    basic: DatasetBasicInfo
+    data: DataInfo
 
     quality: DatasetQuality
 

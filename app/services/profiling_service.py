@@ -1,4 +1,5 @@
 from app.services import dataset_service
+from app.services import dataset_service_s3
 
 from typing import Any
 
@@ -6,7 +7,14 @@ from typing import Any
 def generate_profile(dataset_id):
     df = dataset_service.load_dataset(dataset_id)
 
-    basic_info = extract_basic_info(df)
+    metadata = dataset_service_s3.load_metadata_s3(dataset_id)
+
+    dataset_info = {
+        "id": metadata["dataset_id"],
+        "filename": metadata["filename"]
+    }
+
+    data_info = extract_basic_info(df)
     quality = extract_quality(df)
     column_types = extract_column_types(df)
     statistics = extract_statistics(df) #dict
@@ -14,8 +22,8 @@ def generate_profile(dataset_id):
     preview = extract_preview(df)
 
     return {
-        "dataset_id": dataset_id,
-        "basic": basic_info,
+        "dataset": dataset_info,
+        "data": data_info,
         "quality": quality,
         "types": column_types,
         "total_bytes": memory_usage,

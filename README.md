@@ -1,305 +1,478 @@
 # DataPilot
 
-> AI-powered analytics copilot for exploring, profiling, visualizing, and asking questions about CSV datasets.
+> AI-powered data analyst platform for exploring, profiling, visualizing, and interacting with datasets through natural language.
 
-DataPilot is a lightweight FastAPI-based analytics service that turns an uploaded CSV into a structured dataset you can inspect programmatically. It provides dataset profiling, data-quality insights, chart generation, and an LLM integration powered by Google Gemini.
+DataPilot is an AI-powered analytics platform that allows users to upload datasets, understand their structure, perform data analysis, generate visualizations, and ask questions about their data using natural language.
 
-## ✨ Features
+The platform combines a FastAPI backend, PostgreSQL persistence, AWS S3 storage, analytical services powered by Pandas, and Google Gemini function calling to provide an interactive data exploration experience.
 
-* **CSV uploads** — upload a CSV file and receive a unique dataset ID.
-* **Dataset profiling** — inspect row/column counts, column names, data types, missing values, duplicate rows, descriptive statistics, memory usage, and a five-row preview.
-* **Data validation & analysis** — validate columns and numeric fields, filter rows, calculate correlations, and aggregate numeric values by group.
-* **Chart generation** — generate **bar**, **line**, **scatter**, and **histogram** charts and receive the resulting Plotly figure as JSON.
-* **AI-assisted analysis** — build dataset context and send questions to **Gemini 2.5 Flash** for concise, context-aware answers.
-* **Simple API architecture** — FastAPI routers are separated from dataset, profiling, chart, analysis, context, and LLM services.
+---
 
-## 🧱 Tech Stack
+# ✨ Features
 
-| Area                 | Technology                       |
-| -------------------- | -------------------------------- |
-| API                  | FastAPI                          |
-| ASGI server          | Uvicorn                          |
-| Data processing      | Pandas, NumPy                    |
-| Visualization        | Plotly                           |
-| Validation / schemas | Pydantic                         |
-| Generative AI        | Google Gemini via `google-genai` |
-| Configuration        | `python-dotenv`                  |
-| Runtime              | Python                           |
+## 📂 Dataset Management
 
-## 📁 Project Structure
+- Upload CSV datasets through an API endpoint.
+- Validate datasets before processing.
+- Automatically generate dataset metadata.
+- Store dataset information in PostgreSQL.
+- Store raw dataset files securely in AWS S3.
 
-```text
+## 🔍 Dataset Profiling
+
+DataPilot automatically analyzes uploaded datasets and provides:
+
+- Row and column information
+- Column names and data types
+- Missing value detection
+- Duplicate row detection
+- Descriptive statistics
+- Dataset preview information
+
+## 📊 Data Analysis
+
+The analysis engine currently supports:
+
+- Column validation
+- Numeric field validation
+- Filtering operations
+- Correlation analysis
+- Group-by aggregations
+- Descriptive statistics
+
+These operations are exposed internally as reusable analytical tools.
+
+## 📈 Visualization
+
+DataPilot supports interactive visualization generation using Plotly.
+
+Generated Plotly figures can be rendered directly by the frontend.
+
+Supported chart types include:
+
+- Bar charts
+- Line charts
+- Scatter plots
+- Histograms
+
+## 🤖 AI-Powered Data Analysis
+
+DataPilot integrates Google Gemini with function calling capabilities.
+
+The AI workflow:
+
+1. User sends a question about a dataset.
+2. Dataset context and available analysis tools are prepared.
+3. The request is sent to Gemini.
+4. Gemini decides whether to:
+   - Answer directly using available context.
+   - Invoke an analytical tool.
+5. The final response is returned to the user.
+
+Currently supported AI tools:
+
+- Filtering
+- Aggregations
+- Correlation analysis
+
+---
+
+# 🏗️ Architecture
+
+DataPilot follows a service-oriented backend architecture.
+
+```
+                              User
+                               |
+                               |
+                         React Frontend
+                               |
+                               |
+                        FastAPI Backend
+                               |
+        +----------------------+-----------------+
+        |                      |                 |
+        |                      |                 |
+ Dataset Service           Chat Service    Analysis Services
+        |                      |                 |
+        |                      |                 |
+        |                      |           Pandas Operations
+        |                      |
+   +----+----+                 |
+   |         |                 |
+PostgreSQL   AWS S3            |
+(metadata)(dataset files)      |
+                               |
+                           Gemini API
+                               |
+                        Function Calling
+                               |
+                    Analysis Tool Execution
+```
+
+---
+
+# 🧠 AI Conversation Flow
+
+Conversations and messages are persisted to maintain context.
+
+A typical request flow:
+
+```
+User Message
+      |
+      v
+Conversation Service
+      |
+      v
+Build Dataset Context
+      |
+      v
+Gemini Model
+      |
+      |
+      +---- Direct Response
+      |
+      |
+      +---- Function Call
+                |
+                v
+        Analysis Tool Execution
+                |
+                v
+          Final AI Response
+```
+
+---
+
+# 🗄️ Data Storage Architecture
+
+## PostgreSQL
+
+PostgreSQL stores application metadata and relationships using SQLAlchemy ORM.
+
+Main entities:
+
+### Datasets
+
+Stores dataset information such as:
+
+- Dataset ID
+- Filename
+- Storage path
+- Upload timestamp
+- Dataset metadata
+
+### Conversations
+
+Stores user conversations.
+
+### Messages
+
+Stores conversation messages including:
+
+- User messages
+- AI responses
+- Conversation history
+
+### Conversation-Datasets Relationship
+
+A many-to-many association table connects datasets and conversations.
+
+This allows:
+
+- Multiple datasets to be used in conversations.
+- A dataset to be referenced across multiple conversations.
+
+---
+
+## AWS S3
+
+Dataset files are stored externally in AWS S3.
+
+Current structure:
+
+```
+bucket/
+└── datasets/
+    └── <dataset_id>/
+        ├── dataset.csv
+        └── metadata.json
+```
+
+S3 interaction is handled through `boto3`.
+
+---
+
+# 📁 Project Structure
+
+```
 DataPilot/
+│
 ├── app/
+│   │
 │   ├── api/
 │   │   ├── chart.py
 │   │   ├── chat.py
 │   │   ├── dataset.py
 │   │   ├── health.py
-│   │   ├── ml.py
 │   │   ├── report.py
 │   │   └── upload.py
+│   │
+│   ├── models/
+│   │   ├── associations.py
+│   │   ├── conversation.py
+│   │   ├── dataset.py
+│   │   └── create_tables.py
+│   │
 │   ├── schemas/
-│   │   ├── chart_request.py
-│   │   └── profile.py
+│   │   ├── chart.py
+│   │   ├── chat.py
+│   │   ├── health.py
+│   │   ├── profile.py
+│   │   └── upload.py
+│   │
 │   ├── services/
+│   │   ├── ai_tools.py
 │   │   ├── analysis_service.py
 │   │   ├── chart_service.py
 │   │   ├── context_service.py
+│   │   ├── conversation_service.py
+│   │   ├── database_service.py
 │   │   ├── dataset_service.py
+│   │   ├── dataset_service_s3.py
 │   │   ├── llm_service.py
 │   │   └── profiling_service.py
-│   ├── app.py
-│   └── config.py
-├── uploads/
-├── Dockerfile
+│   │
+│   ├── database.py
+│   ├── config.py
+│   └── app.py
+│
+├── frontend/
+│
 ├── requirements.txt
+├── Dockerfile
 └── README.md
 ```
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
+# 🛠️ Tech Stack
 
-* Python 3.10+ recommended
-* `pip`
-* A Google Gemini API key
+| Area | Technology |
+|---|---|
+| Backend | FastAPI |
+| Server | Uvicorn |
+| Language | Python |
+| Data Processing | Pandas, NumPy |
+| Database | PostgreSQL |
+| ORM | SQLAlchemy |
+| Validation | Pydantic |
+| Storage | AWS S3 |
+| Cloud Storage SDK | boto3 |
+| Visualization | Plotly |
+| AI Model | Google Gemini |
+| Frontend | React + TypeScript |
 
-### 1. Clone the repository
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+- Python 3.10+
+- pip
+- PostgreSQL database
+- AWS S3 bucket
+- Google Gemini API key
+
+---
+
+## 1. Clone Repository
 
 ```bash
 git clone https://github.com/AlwinW64/DataPilot.git
+
 cd DataPilot
 ```
 
-### 2. Create a virtual environment
+---
+
+## 2. Create Virtual Environment
 
 ```bash
 python -m venv venv
 ```
 
-Activate it:
+Activate:
 
-**macOS / Linux**
-
-```bash
-source venv/bin/activate
-```
-
-**Windows PowerShell**
+### Windows
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-### 3. Install dependencies
+### Linux/macOS
+
+```bash
+source venv/bin/activate
+```
+
+---
+
+## 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Gemini
+---
 
-Create a `.env` file in the project root:
+## 4. Environment Variables
+
+Create a `.env` file:
 
 ```env
-API_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_api_key
+
+DATABASE_URL=your_postgresql_connection_string
+
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_BUCKET_NAME=your_bucket_name
 ```
 
-DataPilot currently uses the `gemini-2.5-flash` model through Google's `google-genai` client.
+---
 
-### 5. Start the API
+## 5. Run Backend
 
 ```bash
 uvicorn app.app:app --reload
 ```
-        OR
-```bash
-python main.py
+
+API available at:
+
 ```
-
-The API will be available at:
-
-```text
 http://127.0.0.1:8000
 ```
 
-FastAPI's interactive API documentation is available at:
+Interactive documentation:
 
-```text
+```
 http://127.0.0.1:8000/docs
 ```
 
-### 6. Start the React Frontend
+---
 
-Open a terminal in the `frontend` directory:
+# 🔌 API Overview
 
-```bash
-cd frontend
-npm run dev
+## Upload Dataset
+
 ```
-
-The conversational analytics workspace will be available at:
-
-```text
-http://localhost:5173
-```
-
-
-## 🔌 API Overview
-
-### Health / root
-
-```http
-GET /
-```
-
-Returns basic application status and version information.
-
-### Upload a dataset
-
-```http
 POST /upload/
 ```
 
-Upload a CSV file as multipart form data.
+Uploads and validates a CSV dataset.
 
-Example with `curl`:
+The endpoint:
 
-```bash
-curl -X POST "http://127.0.0.1:8000/upload/" \
-  -H "accept: application/json" \
-  -F "file=@data.csv"
+- Validates the file.
+- Generates a dataset ID.
+- Stores metadata in PostgreSQL.
+- Stores the dataset file in AWS S3.
+
+---
+
+## Chat
+
+```
+POST /chat/
 ```
 
-A successful upload returns a generated `dataset_id` together with dataset metadata.
+Accepts user questions and optional dataset context.
 
-### Profile a dataset
+The request is processed through the Gemini-powered analysis workflow.
 
-```http
-GET /{dataset_id}/profile
-```
+---
 
-Returns:
+## Dataset Operations
 
-* row and column counts
-* column names
-* numeric and categorical columns
-* missing-value counts
-* duplicate-row count
-* descriptive statistics
-* memory usage
-* first five rows
+Dataset-related endpoints provide access to:
 
-### Generate a chart
+- Dataset metadata
+- Profiles
+- Analysis operations
 
-```http
-POST /datasets/{dataset_id}/charts
-```
+---
 
-Example request:
+# 🌐 Deployment
 
-```json
-{
-  "chart_type": "scatter",
-  "x": "age",
-  "y": "income",
-  "color": "department",
-  "title": "Age vs Income"
-}
-```
+Current deployment setup:
 
-Supported chart types:
+| Component | Platform |
+|---|---|
+| Backend API | FastAPI Cloud |
+| Database | Supabase PostgreSQL |
+| Frontend | Vercel |
+| Dataset Storage | AWS S3 |
 
-* `bar`
-* `line`
-* `scatter`
-* `histogram`
+---
 
-The endpoint returns a Plotly figure serialized as JSON.
+# 📌 Current Status
 
-## 🧠 Data Analysis
+DataPilot is actively under development.
 
-The analysis service currently includes reusable operations for:
+Currently implemented:
 
-* validating requested columns
-* validating numeric columns
-* filtering rows using `==`, `!=`, `>`, `>=`, `<`, `<=`, and `contains`
-* calculating Pearson correlation between two numeric columns
-* grouping and aggregating values with `mean`, `sum`, `count`, `min`, `max`, and `median`
+✅ Dataset upload and validation  
+✅ PostgreSQL persistence  
+✅ AWS S3 dataset storage  
+✅ Dataset profiling  
+✅ Analytical operations  
+✅ Conversation persistence  
+✅ Gemini integration  
+✅ Function calling based AI analysis  
+✅ React + TypeScript frontend foundation  
 
-These capabilities form the foundation for higher-level analytical workflows.
+---
 
-## 🤖 AI Analysis
+# 🛣️ Roadmap
 
-DataPilot integrates with Google Gemini through the `google-genai` SDK.
+## Near Term
 
-The current AI service builds a prompt from structured dataset context and the user's question. It is designed to:
+- Authentication and user management
+- Improved AI agent capabilities
+- Support for multiple data sources
 
-* answer using only the supplied dataset context
-* avoid inventing values
-* stay concise and highlight important insights
-* acknowledge when the available context is insufficient
+## Long Term
 
-The configured model is:
+- Frontend experience improvements
+- Automated machine learning workflows
+- Report generation
+- Collaboration features
 
-```text
-gemini-2.5-flash
-```
+---
 
-> **Note:** The repository currently exposes the LLM service as an internal service module; the chat/ML API surface is still under active development.
-
-## 💾 Dataset Storage
-
-Uploaded datasets are stored locally under:
-
-```text
-uploads/<dataset_id>/dataset.csv
-uploads/<dataset_id>/metadata.json
-```
-
-The generated dataset ID is a UUID.
-
-CSV files are validated before processing, and malformed, empty, or non-UTF-8 files are rejected with an appropriate API error.
-
-## 🐳 Docker
-
-A `Dockerfile` is included in the repository. The containerization workflow is not fully documented in the current project, so the local Python/Uvicorn workflow above is the clearest way to run the application today.
-
-## 📌 Current Status
-
-DataPilot is an early-stage project under active development. The core dataset upload, profiling, analysis, charting, and Gemini service layers are present, while some API modules and higher-level AI workflows are still being expanded.
-
-## 🛣️ Roadmap Ideas
-
-Potential next steps include:
-
-* expose the analysis and AI services through stable public endpoints
-* add automated tests and CI
-* support more data formats
-* add richer chart configuration
-* add dataset management endpoints
-* add report/export generation
-* add a frontend for interactive exploration and AI chat
-* improve persistence and production deployment configuration
-
-## 🤝 Contributing
+# 🤝 Contributing
 
 Contributions are welcome.
 
 1. Fork the repository.
 2. Create a feature branch.
-3. Make your changes.
-4. Add or update tests where appropriate.
-5. Open a pull request with a clear description of the change.
+3. Implement changes.
+4. Test your changes.
+5. Submit a pull request.
 
-## 📄 License
+---
 
-DataPilot is licensed under the **MIT License**.
+# 📄 License
 
-See the [LICENSE](LICENSE) file for the full license text.
+DataPilot is licensed under the MIT License.
 
+See the `LICENSE` file for details.
 
-## 🔗 Repository
+---
 
-[github.com/AlwinW64/DataPilot](https://github.com/AlwinW64/DataPilot)
+# 🔗 Repository
+
+https://github.com/AlwinW64/DataPilot

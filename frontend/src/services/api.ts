@@ -1,9 +1,10 @@
 import { DatasetMetadata, DatasetProfile, ChartRequest, ChartResponse, ChatMessage } from '../types/dataset';
 
-const API_BASE = ''; // Relies on Vite proxy: /datasets, /upload, /health
+const API_BASE = ''; // Relies on Vite proxy: /datasets, /dataset, /chat, /health
 
 const STORAGE_KEY_DATASETS = 'datapilot_datasets';
 const STORAGE_KEY_CHATS = 'datapilot_chats_';
+const STORAGE_KEY_CONV = 'datapilot_conv_'; // Maps datasetId -> conversationId
 
 export const api = {
   /**
@@ -13,7 +14,7 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/datasets`, {
+    const response = await fetch(`${API_BASE}/dataset`, {
       method: 'POST',
       body: formData,
     });
@@ -24,12 +25,13 @@ export const api = {
     }
 
     const data = await response.json();
+    // Backend UploadResponse: { dataset_id, filename, rows, columns (int), column_names }
     const metadata: DatasetMetadata = {
       dataset_id: data.dataset_id,
       filename: data.filename || file.name,
-      row_count: data.row_count ?? data.rows ?? 0,
-      column_count: (typeof data.columns === 'number' ? data.columns : data.column_count) ?? data.column_names?.length ?? 0,
-      columns: Array.isArray(data.column_names) ? data.column_names : (Array.isArray(data.columns) ? data.columns : []),
+      row_count: data.rows ?? data.row_count ?? 0,
+      column_count: typeof data.columns === 'number' ? data.columns : (data.column_count ?? data.column_names?.length ?? 0),
+      columns: Array.isArray(data.column_names) ? data.column_names : [],
       uploaded_at: new Date().toISOString(),
       filesize: file.size,
     };
@@ -44,7 +46,7 @@ export const api = {
    * Fetch complete dataset profile from backend
    */
   async getProfile(datasetId: string): Promise<DatasetProfile> {
-    const response = await fetch(`${API_BASE}/datasets/${datasetId}/profile`);
+    const response = await fetch(`${API_BASE}/dataset/${datasetId}/profile`);
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Failed to fetch profile' }));
@@ -91,7 +93,8 @@ export const api = {
   },
 
   /**
-   * Ask the AI Copilot a question about the active dataset
+   * Ask the AI Copilot a question about the active dataset.
+   * Calls POST /chat with {conversation_id, message, dataset_ids} to match the backend schema.
    */
   async askCopilot(
     datasetId: string,
@@ -99,20 +102,28 @@ export const api = {
     profile?: DatasetProfile | null
   ): Promise<{ text: string; actionTriggers?: ChatMessage['actionTriggers'] }> {
     try {
-      // First attempt to call the backend chat endpoint if configured
-      const response = await fetch(`${API_BASE}/datasets/${datasetId}/chat`, {
+      // Retrieve persisted conversation_id for this dataset (if any)
+      const conversationId = api.getConversationId(datasetId) || undefined;
+
+      const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          conversation_id: conversationId ?? null,
+          message: question,
+          dataset_ids: [datasetId],
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        // If backend returns answer
+        // Persist conversation_id returned by backend for follow-up messages
+        if (data.conversation_id) {
+          api.saveConversationId(datasetId, data.conversation_id);
+        }
         if (data.answer && typeof data.answer === 'string') {
           return { text: data.answer };
         }
-        // If backend returns raw context dictionary, fall through to synthesizer
       }
     } catch {
       // Fallback to intelligent client-side Copilot synthesizer
@@ -149,6 +160,7 @@ export const api = {
       const updated = existing.filter((d) => d.dataset_id !== datasetId);
       localStorage.setItem(STORAGE_KEY_DATASETS, JSON.stringify(updated));
       localStorage.removeItem(STORAGE_KEY_CHATS + datasetId);
+      localStorage.removeItem(STORAGE_KEY_CONV + datasetId);
     } catch (e) {
       console.warn('Failed to delete dataset from localStorage', e);
     }
@@ -168,6 +180,24 @@ export const api = {
       localStorage.setItem(STORAGE_KEY_CHATS + datasetId, JSON.stringify(messages));
     } catch (e) {
       console.warn('Failed to persist chat to localStorage', e);
+    }
+  },
+
+  /** Retrieve the persisted backend conversation_id for a given dataset */
+  getConversationId(datasetId: string): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEY_CONV + datasetId);
+    } catch {
+      return null;
+    }
+  },
+
+  /** Persist the backend conversation_id returned after a chat call */
+  saveConversationId(datasetId: string, conversationId: string): void {
+    try {
+      localStorage.setItem(STORAGE_KEY_CONV + datasetId, conversationId);
+    } catch (e) {
+      console.warn('Failed to persist conversation id to localStorage', e);
     }
   },
 };
@@ -274,22 +304,48 @@ function generateClientSideAnalysis(
 }
 
 /**
- * Normalizes backend profile response formats into standard DatasetProfile
+ * Normalizes backend profile response formats into standard DatasetProfile.
+ *
+ * Backend ProfileResponse shape (app/schemas/profile.py):
+ *   {
+ *     dataset: { id, filename },
+ *     data: { rows, columns, column_names },
+ *     quality: { duplicate_rows, missing_values },
+ *     types: { numeric_columns, categorical_columns },
+ *     statistics: dict,
+ *     preview: list,
+ *     total_bytes: int,
+ *   }
  */
 function normalizeProfile(raw: any): DatasetProfile {
-  const rows = raw.basic?.rows ?? raw.shape?.rows ?? 0;
-  const cols = raw.basic?.columns ?? raw.shape?.columns ?? (raw.basic?.column_names?.length || 0);
-  const columns = raw.basic?.column_names ?? raw.columns ?? [];
-  const numeric_columns = raw.types?.numeric_columns ?? raw.numeric_columns ?? [];
-  const categorical_columns = raw.types?.categorical_columns ?? raw.categorical_columns ?? [];
-  const missing_values = raw.quality?.missing_values ?? raw.missing_values ?? {};
-  const duplicate_rows = raw.quality?.duplicate_rows ?? raw.duplicate_rows ?? 0;
-  const describe = raw.statistics ?? raw.describe ?? {};
-  const memory_usage = raw.memory_usage ?? (raw.total_bytes ? `${(raw.total_bytes / (1024 * 1024)).toFixed(2)} MB` : 'N/A');
-  const preview = Array.isArray(raw.preview) ? raw.preview : [];
+  // Rows / cols — prefer nested `data` object (backend), fall back to flat shapes
+  const rows = raw.data?.rows ?? raw.basic?.rows ?? raw.shape?.rows ?? 0;
+  const cols = raw.data?.columns ?? raw.basic?.columns ?? raw.shape?.columns ?? (raw.data?.column_names?.length || 0);
+  const columns: string[] = raw.data?.column_names ?? raw.basic?.column_names ?? raw.columns ?? [];
+
+  // Column type lists — nested `types` object (backend) with flat fallback
+  const numeric_columns: string[] = raw.types?.numeric_columns ?? raw.numeric_columns ?? [];
+  const categorical_columns: string[] = raw.types?.categorical_columns ?? raw.categorical_columns ?? [];
+
+  // Data quality — nested `quality` object (backend) with flat fallback
+  const missing_values: Record<string, number> = raw.quality?.missing_values ?? raw.missing_values ?? {};
+  const duplicate_rows: number = raw.quality?.duplicate_rows ?? raw.duplicate_rows ?? 0;
+
+  // Statistics dict
+  const describe: Record<string, Record<string, number | null>> = raw.statistics ?? raw.describe ?? {};
+
+  // Memory — backend provides total_bytes (int)
+  const memory_usage: string =
+    raw.memory_usage ??
+    (raw.total_bytes != null ? `${(raw.total_bytes / (1024 * 1024)).toFixed(2)} MB` : 'N/A');
+
+  const preview: Array<Record<string, any>> = Array.isArray(raw.preview) ? raw.preview : [];
+
+  // dataset_id — nested `dataset.id` (backend) or flat field
+  const dataset_id: string = raw.dataset?.id ?? raw.dataset_id ?? '';
 
   return {
-    dataset_id: raw.dataset_id,
+    dataset_id,
     shape: { rows, columns: cols },
     columns,
     numeric_columns,

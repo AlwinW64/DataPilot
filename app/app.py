@@ -12,6 +12,25 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+origins = [
+    "http://localhost:5500",          # Local development
+    "https://datapilot-lime.vercel.app"    # Production frontend
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+
+
 @app.get("/")
 def root():
     return {

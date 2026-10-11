@@ -90,6 +90,8 @@ export function App() {
     if (activeDataset) {
       setMessages([]);
       api.saveChatLocally(activeDataset.dataset_id, []);
+      // Clear persisted conversation_id so backend starts a fresh conversation
+      localStorage.removeItem(`datapilot_conv_${activeDataset.dataset_id}`);
     }
   };
 

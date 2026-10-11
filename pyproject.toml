@@ -10,9 +10,9 @@ description = "Data Analyst Assistant"
 requires-python = ">=3.10"
 
 
+
 dependencies = [
     "fastapi[standard]>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
     "pandas==3.0.5",
     "plotly==6.9.0",
     "google-genai==2.18.1",
@@ -20,8 +20,13 @@ dependencies = [
     "requests==2.34.2",
     "cryptography==50.0.0",
     "python-dotenv==1.2.2",
-    "python-multipart==0.0.32"
+    "python-multipart==0.0.32",
+    "SQLAlchemy==2.0.52",
+    "boto3==1.43.92",
+    "psycopg[binary]==3.3.5",
+    "psycopg2-binary==2.9.12"
 ]
+
 
 
 [tool.fastapi]

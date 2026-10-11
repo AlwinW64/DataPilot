@@ -1,6 +1,6 @@
 import { DatasetMetadata, DatasetProfile, ChartRequest, ChartResponse, ChatMessage } from '../types/dataset';
 
-const API_BASE = 'https://datapilot-lime.vercel.app'; // Relies on Vite proxy: /datasets, /dataset, /chat, /health
+const API_BASE = 'https://datapilot-11990e29.fastapicloud.dev'; // Relies on Vite proxy: /datasets, /dataset, /chat, /health
 
 const STORAGE_KEY_DATASETS = 'datapilot_datasets';
 const STORAGE_KEY_CHATS = 'datapilot_chats_';
